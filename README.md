@@ -2,6 +2,8 @@
 
 Replace any music in the game with your own files, from a simple page in your browser.
 
+Download: https://www.nexusmods.com/castlevaniabelmontscurse/mods/140
+
 Demonstration video: https://youtu.be/L-p6SFayYP4
 
 - Area music can be **any length**, longer or shorter than the original. The tool rebuilds the audio bank and stretches the event timeline so the game plays the whole song and loops back at the end.
