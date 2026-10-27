@@ -20,6 +20,7 @@ def save_config(cfg):
 
 
 def data_dir_of(game_dir):
+    if game_dir and os.path.isfile(game_dir): game_dir = os.path.dirname(game_dir)
     if not game_dir or not os.path.isdir(game_dir): return None
     if os.path.isfile(os.path.join(game_dir, 'StreamingAssets', 'Master.bank')): return game_dir
     for d in glob.glob(os.path.join(game_dir, '*_Data')):

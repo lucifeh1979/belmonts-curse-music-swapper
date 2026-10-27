@@ -13,6 +13,13 @@ CACHE = os.path.join(HERE, 'cache')
 HISTORY = os.path.join(HERE, 'history.json')
 PORT = 8765
 
+BROWSE = '''
+import tkinter as tk
+from tkinter import filedialog
+root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True)
+print(filedialog.askopenfilename(title="Castlevania Belmont's Curse.exe", filetypes=[('Game', '*.exe')]) or '')
+'''
+
 lock = threading.Lock()
 cache = {'key': None, 'tracks': None}
 
@@ -112,10 +119,20 @@ class Handler(BaseHTTPRequestHandler):
             open(os.path.join(MUSIC, name), 'wb').write(body)
             return self.reply(200, {'music': name})
         data = json.loads(body or b'{}')
-        if u.path == '/api/config':
+        if u.path == '/api/browse':
+            r = subprocess.run([sys.executable, '-c', BROWSE], capture_output=True, text=True, creationflags=ms.NO_WINDOW)
+            path = r.stdout.strip()
+            if r.returncode: return self.reply(200, {'error': 'no_dialog'})
+            if not path: return self.reply(200, {'ok': False})
+            data = {'game_dir': path}
+        if u.path in ('/api/config', '/api/browse'):
             cfg = ms.load_config()
-            for k in ('game_dir', 'ffmpeg'):
-                if data.get(k): cfg[k] = data[k].strip().strip('"')
+            if data.get('game_dir'):
+                d = ms.data_dir_of(data['game_dir'].strip().strip('"'))
+                if not d: return self.reply(200, {'error': 'bad_game'})
+                cfg['game_dir'] = os.path.dirname(d)
+                cache['key'] = None
+            if data.get('ffmpeg'): cfg['ffmpeg'] = data['ffmpeg'].strip().strip('"')
             ms.save_config(cfg)
             return self.reply(200, {'ok': True})
         if not lock.acquire(blocking=False):

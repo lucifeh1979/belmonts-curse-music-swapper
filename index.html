@@ -81,6 +81,8 @@
     <div class="lang"><button data-l="en">EN</button><button data-l="pt">PT-BR</button></div>
   </div>
   <div class="bar" id="bar">
+    <span class="pill" id="st-dir">…</span>
+    <button class="small" id="b-change" data-t="change"></button>
     <span class="pill" id="st-game">…</span>
     <span class="pill" id="st-bank">…</span>
     <span class="sp"></span>
@@ -114,10 +116,12 @@ const T = {
     cUndo: 'Put Master.bank back the way it was before the last change?',
     cAll: 'Put back ALL the music as it was the first time you opened Music Swapper?',
     cTrack: 'Put {0} back to its original music?',
-    setupTitle: 'Setup', gameMissing: "Game folder not found. Paste the folder where Castlevania Belmont's Curse is installed:",
+    setupTitle: 'Where is the game?', gameMissing: "Music Swapper could not find the game by itself. Click the button and pick Castlevania Belmont's Curse.exe in the game folder.",
+    findGame: 'Find the game…', orPaste: 'Or paste the game folder or the .exe path here:', pickExe: "Pick Castlevania Belmont's Curse.exe in the window that opened…",
+    change: 'Change…', gameAt: 'Game: {0}',
     ffmpegMissing: 'ffmpeg not found. Download it (the "essentials" build), unzip it, and paste the path to ffmpeg.exe:',
     save: 'Save',
-    err: {busy: 'A swap is already running', game_open: 'Close the game first (it locks Master.bank)', missing: 'File not found: {0}', not_found: 'Not found', no_game: 'Game not found'},
+    err: {busy: 'A swap is already running', game_open: 'Close the game first (it locks Master.bank)', missing: 'File not found: {0}', not_found: 'Not found', no_game: 'Game not found', bad_game: "That is not the game: pick Castlevania Belmont's Curse.exe in the game folder.", no_dialog: 'The file window did not open: paste the path below instead.'},
   },
   pt: {
     title: 'Trocar Música', subtitle: "Castlevania: Belmont's Curse. Escolha a área ou o chefe, a música nova, e troca.",
@@ -136,10 +140,12 @@ const T = {
     cUndo: 'Voltar o Master.bank pra como estava antes da última mudança?',
     cAll: 'Voltar TODAS as músicas pra como estavam na primeira vez que você abriu o Trocar Música?',
     cTrack: 'Voltar {0} pra música original?',
-    setupTitle: 'Configuração', gameMissing: "Não achei a pasta do jogo. Cole a pasta onde o Castlevania Belmont's Curse está instalado:",
+    setupTitle: 'Onde está o jogo?', gameMissing: "O Music Swapper não achou o jogo sozinho. Clique no botão e escolha o Castlevania Belmont's Curse.exe na pasta do jogo.",
+    findGame: 'Achar o jogo…', orPaste: 'Ou cole aqui a pasta do jogo ou o caminho do .exe:', pickExe: "Escolha o Castlevania Belmont's Curse.exe na janela que abriu…",
+    change: 'Trocar…', gameAt: 'Jogo: {0}',
     ffmpegMissing: 'Não achei o ffmpeg. Baixe (a versão "essentials"), descompacte e cole o caminho do ffmpeg.exe:',
     save: 'Salvar',
-    err: {busy: 'Já tem uma troca rodando', game_open: 'Feche o jogo antes (ele trava o Master.bank)', missing: 'Arquivo não existe: {0}', not_found: 'Não achei', no_game: 'Jogo não encontrado'},
+    err: {busy: 'Já tem uma troca rodando', game_open: 'Feche o jogo antes (ele trava o Master.bank)', missing: 'Arquivo não existe: {0}', not_found: 'Não achei', no_game: 'Jogo não encontrado', bad_game: "Isso não é o jogo: escolha o Castlevania Belmont's Curse.exe na pasta do jogo.", no_dialog: 'A janela de arquivos não abriu: cole o caminho abaixo.'},
   },
 };
 const NAMES = {
@@ -204,7 +210,22 @@ function texts() {
   if (state) render();
 }
 
+async function findGame() {
+  log('<span class="spin"></span> ' + esc(t('pickExe')), '', null, true);
+  const r = await fetch('/api/browse', {method: 'POST', body: '{}'}); const j = await r.json();
+  if (j.error) { log(t('failed'), t('err.' + j.error), false); return; }
+  $('#log').style.display = 'none';
+  if (j.ok) load();
+}
+
+async function config(body) {
+  const r = await fetch('/api/config', {method: 'POST', body: JSON.stringify(body)}); const j = await r.json();
+  if (j.error) { log(t('failed'), t('err.' + j.error), false); return; }
+  $('#log').style.display = 'none'; load();
+}
+
 function status() {
+  $('#st-dir').textContent = t('gameAt', state.game_dir);
   $('#st-game').textContent = state.game_open ? t('gameOpen') : t('gameClosed');
   $('#st-game').className = 'pill ' + (state.game_open ? 'err' : 'ok');
   $('#st-bank').textContent = t('bank', state.bank_mb);
@@ -222,14 +243,13 @@ function render() {
   $('#bar').style.display = ok ? '' : 'none';
   $('#tabs').style.display = $('#list').style.display = ok ? '' : 'none';
   $('#setup').innerHTML = ok ? '' : `<div class="setup"><h2>${t('setupTitle')}</h2>
-    ${state.setup.game ? '' : `<p>${t('gameMissing')}</p><div class="row"><input type="text" id="cfg-game" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\Castlevania Belmont's Curse" style="flex:1"></div>`}
+    ${state.setup.game ? '' : `<p>${t('gameMissing')}</p><div><button class="main find">${t('findGame')}</button></div>
+      <p>${t('orPaste')}</p><div class="row"><input type="text" id="cfg-game" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\Castlevania Belmont's Curse\\Castlevania Belmont's Curse.exe" style="flex:1"></div>`}
     ${state.setup.ffmpeg ? '' : `<p>${t('ffmpegMissing')} <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank" rel="noopener">gyan.dev/ffmpeg</a></p><div class="row"><input type="text" id="cfg-ffmpeg" placeholder="C:\\ffmpeg\\bin\\ffmpeg.exe" style="flex:1"></div>`}
-    <div><button class="main" id="cfg-save">${t('save')}</button></div></div>`;
+    <div><button id="cfg-save">${t('save')}</button></div></div>`;
   if (!ok) {
-    $('#cfg-save').onclick = async () => {
-      const body = {game_dir: ($('#cfg-game') || {}).value, ffmpeg: ($('#cfg-ffmpeg') || {}).value};
-      await fetch('/api/config', {method: 'POST', body: JSON.stringify(body)}); load();
-    };
+    const f = document.querySelector('.find'); if (f) f.onclick = findGame;
+    $('#cfg-save').onclick = () => config({game_dir: ($('#cfg-game') || {}).value, ffmpeg: ($('#cfg-ffmpeg') || {}).value});
     return;
   }
   status();
@@ -330,6 +350,7 @@ document.querySelectorAll('.lang button').forEach(b => b.onclick = () => {
   lang = b.dataset.l; try { localStorage.setItem('lang', lang); } catch (e) {}
   texts();
 });
+$('#b-change').onclick = findGame;
 $('#b-undo').onclick = () => restoreBank('undo', t('cUndo'));
 $('#b-all').onclick = () => restoreBank('all', t('cAll'));
 texts(); load();
