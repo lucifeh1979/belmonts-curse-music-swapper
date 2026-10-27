@@ -6,3 +6,4 @@ config.json
 *.bank
 *.bank.new
 __pycache__/
+ffmpeg/

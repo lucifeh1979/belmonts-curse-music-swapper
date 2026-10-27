@@ -64,8 +64,8 @@ def find_game():
 
 def find_ffmpeg():
     cfg = load_config()
-    for c in (cfg.get('ffmpeg'), shutil.which('ffmpeg'), os.path.join(HERE, 'ffmpeg.exe'),
-              os.path.join(HERE, 'ffmpeg', 'bin', 'ffmpeg.exe'), r'C:\ffmpeg\bin\ffmpeg.exe'):
+    for c in (os.path.join(HERE, 'ffmpeg', 'ffmpeg.exe'), cfg.get('ffmpeg'), os.path.join(HERE, 'ffmpeg.exe'),
+              shutil.which('ffmpeg'), r'C:\ffmpeg\bin\ffmpeg.exe'):
         if c and os.path.isfile(c): return c
     return None
 

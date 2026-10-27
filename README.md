@@ -11,9 +11,11 @@ Replace any music in the game with your own files, from a simple page in your br
 
 - Windows
 - [Python 3.10+](https://www.python.org/downloads/) (check "Add python.exe to PATH" during install)
-- [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (the "essentials" build). Put it on PATH, in `C:\ffmpeg\bin`, or next to `music_swap.py`; otherwise the page asks where it is.
+- ffmpeg: the release on Nexus Mods comes with it in the `ffmpeg` folder. Running from this repository, put the [gyan.dev essentials build](https://www.gyan.dev/ffmpeg/builds/) `ffmpeg.exe` in a folder named `ffmpeg` next to `music_swap.py`.
 
 No extra Python packages are needed.
+
+ffmpeg is licensed under the GPL v3; see `ffmpeg/LICENSE` and `ffmpeg/README.txt` in the release for the license and where to get its source code.
 
 ## Use
 
