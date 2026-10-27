@@ -1,0 +1,8 @@
+music/
+backup/
+cache/
+history.json
+config.json
+*.bank
+*.bank.new
+__pycache__/

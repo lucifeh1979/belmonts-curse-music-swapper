@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Swap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0b10; --panel: #17121a; --row: #1d1721; --row2: #231b28; --line: #34283a;
+    --text: #ece4ea; --muted: #a6939f; --blood: #b3263c; --blood2: #e0485f; --gold: #d4af6a;
+    --ok: #5fbf8a; --warn: #e2b04a; --err: #ef6a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 500px at 50% -150px, #2a1420 0%, var(--bg) 60%) fixed, var(--bg);
+         color: var(--text); font: 15px/1.45 Inter, system-ui, sans-serif; }
+  header { padding: 28px 16px 10px; max-width: 1100px; margin: 0 auto; }
+  .top { display: flex; align-items: flex-start; gap: 12px; }
+  h1 { font-family: Cinzel, serif; font-size: 30px; letter-spacing: .04em; margin: 0; color: var(--gold); }
+  .sub { color: var(--muted); margin-top: 4px; }
+  .lang { margin-left: auto; display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+  .lang button { border: 0; border-radius: 0; padding: 6px 11px; background: transparent; color: var(--muted); font-size: 13px; }
+  .lang button.on { background: var(--row2); color: var(--gold); }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+  .pill { padding: 5px 10px; border-radius: 999px; background: var(--row); border: 1px solid var(--line); font-size: 13px; }
+  .pill.err { color: var(--err); border-color: #6a2a30; }
+  .pill.ok { color: var(--ok); }
+  .sp { flex: 1; }
+  button { font: inherit; border-radius: 8px; border: 1px solid var(--line); background: var(--row2); color: var(--text);
+           padding: 7px 12px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button.main { background: var(--blood); border-color: var(--blood); font-weight: 600; }
+  button.main:hover { background: var(--blood2); }
+  button:disabled { opacity: .45; cursor: default; }
+  main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 60px; }
+  .tabs { display: flex; gap: 6px; margin: 14px 0 10px; flex-wrap: wrap; }
+  .tab { background: transparent; }
+  .tab.on { background: var(--row2); border-color: var(--gold); color: var(--gold); }
+  input[type=search], input[type=text] { background: var(--row); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 7px 10px; font: inherit; min-width: 220px; }
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  .item { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) auto; gap: 14px; align-items: center;
+          background: var(--row); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .item.sel { border-color: var(--gold); }
+  .name { font-weight: 600; }
+  .where { font-size: 12.5px; color: var(--muted); }
+  .track { color: var(--muted); font-size: 12px; word-break: break-all; opacity: .8; }
+  .tag { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; font-weight: 500; }
+  .tag.free { background: #1f3a2c; color: var(--ok); }
+  .tag.limit { background: #3d321b; color: var(--warn); }
+  .now { font-size: 12.5px; color: var(--gold); margin-top: 2px; }
+  .pickcol { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cur { margin-top: 6px; }
+  .small { padding: 3px 10px; font-size: 12.5px; }
+  .file { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .warn { font-size: 12.5px; color: var(--warn); }
+  .loop { width: 74px; background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 13px; }
+  label.lp { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  audio { height: 30px; max-width: 260px; }
+  .setup { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .setup h2 { margin: 0; font-size: 17px; color: var(--gold); }
+  .setup p { margin: 0; color: var(--muted); }
+  .setup a { color: var(--gold); }
+  #log { position: fixed; right: 16px; bottom: 16px; width: min(520px, calc(100vw - 32px)); max-height: 46vh; overflow: auto;
+         background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: none;
+         box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  #log pre { white-space: pre-wrap; margin: 6px 0 0; font: 12.5px/1.45 ui-monospace, Consolas, monospace; color: var(--muted); }
+  #log .t { font-weight: 600; }
+  #log .t.ok { color: var(--ok); } #log .t.err { color: var(--err); }
+  .x { float: right; padding: 1px 8px; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--muted); border-top-color: transparent; border-radius: 50%; animation: g 0.8s linear infinite; vertical-align: -1px; }
+  @keyframes g { to { transform: rotate(360deg); } }
+  @media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div><h1 data-t="title"></h1><div class="sub" data-t="subtitle"></div></div>
+    <div class="lang"><button data-l="en">EN</button><button data-l="pt">PT-BR</button></div>
+  </div>
+  <div class="bar" id="bar">
+    <span class="pill" id="st-game">…</span>
+    <span class="pill" id="st-bank">…</span>
+    <span class="sp"></span>
+    <button id="b-undo" data-t="undo"></button>
+    <button id="b-all" data-t="restoreAll"></button>
+  </div>
+</header>
+<main>
+  <div id="setup"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="list" id="list"></div>
+</main>
+<div id="log"><button class="x" onclick="this.parentNode.style.display='none'">×</button><div class="t" id="log-t"></div><pre id="log-p"></pre></div>
+
+<script>
+const T = {
+  en: {
+    title: 'Music Swap', subtitle: "Castlevania: Belmont's Curse. Pick an area or boss, pick the new music, swap.",
+    undo: 'Undo last swap', restoreAll: 'Restore all music',
+    gameOpen: 'Game is OPEN: close it to swap', gameClosed: 'Game closed', bank: 'Installed Master.bank: {0} MB',
+    tabs: {areas: 'Areas', bosses: 'Bosses', other: 'Menu & credits', all: 'All tracks'}, search: 'Search…',
+    anyLen: 'any length', upTo: 'up to {0}', swappedFor: 'Swapped for {0} ({1})',
+    current: 'Play current', loading: 'loading…', restore: 'Restore original',
+    pick: 'Choose music…', repick: 'Change file', formats: 'mp3, ogg, wav, flac…', loopAt: 'loop restarts at', swap: 'Swap',
+    tooLong: 'This one is {0}: longer than the {1} limit, it will not go in.',
+    shorter: 'Shorter than the original: silence until the game loops.', nothing: 'Nothing here.',
+    uploading: 'Uploading {0}…', swapping: 'Swapping {0}… (encodes, builds the bank and tests it in the game\'s FMOD)',
+    restoring: 'Restoring {0}…',
+    done: 'Done, installed in the game', notDone: 'Not changed (nothing was written)', failed: 'Failed', error: 'Error',
+    copying: 'Copying…', ready: 'Done',
+    cUndo: 'Put Master.bank back the way it was before the last change?',
+    cAll: 'Put back ALL the music as it was the first time you opened Music Swap?',
+    cTrack: 'Put {0} back to its original music?',
+    setupTitle: 'Setup', gameMissing: "Game folder not found. Paste the folder where Castlevania Belmont's Curse is installed:",
+    ffmpegMissing: 'ffmpeg not found. Download it (the "essentials" build), unzip it, and paste the path to ffmpeg.exe:',
+    save: 'Save',
+    err: {busy: 'A swap is already running', game_open: 'Close the game first (it locks Master.bank)', missing: 'File not found: {0}', not_found: 'Not found', no_game: 'Game not found'},
+  },
+  pt: {
+    title: 'Trocar Música', subtitle: "Castlevania: Belmont's Curse. Escolha a área ou o chefe, a música nova, e troca.",
+    undo: 'Desfazer última troca', restoreAll: 'Restaurar todas as músicas',
+    gameOpen: 'Jogo ABERTO: feche pra trocar', gameClosed: 'Jogo fechado', bank: 'Master.bank instalado: {0} MB',
+    tabs: {areas: 'Áreas', bosses: 'Chefes', other: 'Menu e créditos', all: 'Todas as faixas'}, search: 'Buscar…',
+    anyLen: 'qualquer tamanho', upTo: 'até {0}', swappedFor: 'Trocada por {0} ({1})',
+    current: 'Ouvir a atual', loading: 'carregando…', restore: 'Voltar a original',
+    pick: 'Escolher música…', repick: 'Trocar arquivo', formats: 'mp3, ogg, wav, flac…', loopAt: 'loop volta em', swap: 'Trocar',
+    tooLong: 'Essa tem {0}: maior que o limite de {1}, não vai passar.',
+    shorter: 'Menor que a original: sobra silêncio até o loop do jogo.', nothing: 'Nada aqui.',
+    uploading: 'Enviando {0}…', swapping: 'Trocando {0}… (codifica, monta o bank e testa no FMOD do jogo)',
+    restoring: 'Voltando {0}…',
+    done: 'Pronto, instalado no jogo', notDone: 'Não mudou (nada foi gravado)', failed: 'Não deu', error: 'Erro',
+    copying: 'Copiando…', ready: 'Pronto',
+    cUndo: 'Voltar o Master.bank pra como estava antes da última mudança?',
+    cAll: 'Voltar TODAS as músicas pra como estavam na primeira vez que você abriu o Trocar Música?',
+    cTrack: 'Voltar {0} pra música original?',
+    setupTitle: 'Configuração', gameMissing: "Não achei a pasta do jogo. Cole a pasta onde o Castlevania Belmont's Curse está instalado:",
+    ffmpegMissing: 'Não achei o ffmpeg. Baixe (a versão "essentials"), descompacte e cole o caminho do ffmpeg.exe:',
+    save: 'Salvar',
+    err: {busy: 'Já tem uma troca rodando', game_open: 'Feche o jogo antes (ele trava o Master.bank)', missing: 'Arquivo não existe: {0}', not_found: 'Não achei', no_game: 'Jogo não encontrado'},
+  },
+};
+const NAMES = {
+  'Mus_StartScreen': ['Main Menu', '', '', 'other'],
+  'Mus_Credits_Normal': ['Credits', '', 'Créditos', 'other'],
+  'Mus_Credits_True': ['Good Ending', '', 'Final bom', 'other'],
+  'Mus_Credits_Bad': ['Bad Ending', '', 'Final ruim', 'other'],
+  'Street Poor_Arrangement1 - Rose Theme': ['Rose Intro Theme', '', 'Tema de abertura da Rose', 'areas'],
+  'Mus_Biome_StreetsPoor_Intro_Edit': ['Pre Intro to Paris Biome', '', 'Antes de Paris', 'areas'],
+  'Mus_Biome_StreetsPoor_Edit_Newer_AtoB': ['Paris Streets (A → B)', '', 'Ruas de Paris', 'areas'],
+  'Mus_Biome_StreetsPoor_Edit_Newer_BtoA': ['Paris Streets (B → A)', '', 'Ruas de Paris', 'areas'],
+  'Mus_Biome_Cemetary_Edit': ['Holy Innocents Cemetery', '', 'Cemitério dos Inocentes', 'areas'],
+  'Mus_Biome_Catacombs_Edit': ['Catacombs of Paris', '', 'Catacumbas de Paris', 'areas'],
+  'Mus_Biome_ClockTower_Edit': ['Clock Tower', '', 'Torre do Relógio', 'areas'],
+  'Mus_Biome_Library_Edit': ['Library', '', 'Biblioteca', 'areas'],
+  'Mus_Biome_MainHall_Edit_BloodyTears_New': ['Main Hall', '', 'Salão Principal', 'areas'],
+  'Mus_Biome_MainHall_Bridge_Edit': ['Notre-Dame Bridge / Castle Drawbridge', '', 'Ponte de Notre-Dame / Ponte levadiça', 'areas'],
+  'Mus_Biome_MainHall_Bridge_Edit_Drums': ['Notre-Dame Bridge / Castle Drawbridge (drums)', '', 'Ponte de Notre-Dame / Ponte levadiça (tambores)', 'areas'],
+  'Mus_Biome_NotreDame_Edit': ['Notre-Dame', '', '', 'areas'],
+  'Mus_Biome_HallOfMirrors_Edit': ['Hall of Mirrors', '', 'Salão dos Espelhos', 'areas'],
+  'Mus_Biome_MasterQuarters': ["Master's Quarters", '', 'Aposentos do Mestre', 'areas'],
+  'Mus_Boss_Leon_Main': ['The Fallen (Leon)', 'Gate to the Catacombs, Paris Streets', 'Portão das Catacumbas, Ruas de Paris', 'bosses'],
+  'Mus_Boss_Jeanne_Main': ['Joan of Arc', 'Roof of the Tower, Paris Streets', 'Telhado da Torre, Ruas de Paris', 'bosses'],
+  'Mus_Boss_Medusa': ['Medusa', "Serpent's Lair, Holy Innocents' Cemetery", 'Covil da Serpente, Cemitério dos Inocentes', 'bosses'],
+  'Mus_Boss_Death_Catacombs': ['Death', 'Stairway to Hell, Catacombs', 'Escadaria do Inferno, Catacumbas', 'bosses'],
+  'Mus_Boss_Isaac_MainHall_Edit': ['Isaac', 'Main Hall', 'Salão Principal', 'bosses'],
+  'Mus_Boss_Talos_Edit': ['Talos', 'Throne of the Builder, Clock Tower', 'Trono do Construtor, Torre do Relógio', 'bosses'],
+  'Mus_Boss_Carmilla_Edit': ['Carmilla', 'Observatory, Library', 'Observatório, Biblioteca', 'bosses'],
+  'Mus_Room_Brauner': ['Brauner', "Brauner's Atelier, Main Hall", 'Ateliê do Brauner, Salão Principal', 'bosses'],
+  'Mus_Boss_Mammon': ['Mammon', "Mammon's Lair, Catacombs of Paris", 'Covil do Mammon, Catacumbas de Paris', 'bosses'],
+  'Mus_Boss_Jeanne_Rematch': ['Joan of Arc (Rematch)', 'Courage Bell, Notre-Dame', 'Sino da Coragem, Notre-Dame', 'bosses'],
+  'Mus_Boss_Death_NotreDame_Edit': ['Death (Second Encounter)', 'Transept, Notre-Dame', 'Transepto, Notre-Dame', 'bosses'],
+  'Mus_Room_SaintLouis': ['Saint Louis', 'Palace of Justice, Paris Streets', 'Palácio da Justiça, Ruas de Paris', 'bosses'],
+  'Mus_Boss_Isaac_ClockTower_Edit': ['Isaac (Second Encounter)', 'Heart of the Clock, Clock Tower', 'Coração do Relógio, Torre do Relógio', 'bosses'],
+  'Mus_Boss_Dracula_Edit': ['Dracula (First Fight)', "Court of the Night, Master's Quarters", 'Corte da Noite, Aposentos do Mestre', 'bosses'],
+  'Mus_Boss_Succubus': ['Succubus', 'Hall of Mirrors, Belmont Manor', 'Salão dos Espelhos, Mansão Belmont', 'bosses'],
+  'Mus_Boss_StainedGlassKnight': ['Doppelganger', 'Gallery of the Four Virtues, Notre-Dame', 'Galeria das Quatro Virtudes, Notre-Dame', 'bosses'],
+  'Mus_Boss_Erinys_Edit': ['Arthur', 'Chapel, Notre-Dame', 'Capela, Notre-Dame', 'bosses'],
+  'Mus_Boss_DraculaBeast': ['Dracula (Beast)', "Court of the Night, Master's Quarters", 'Corte da Noite, Aposentos do Mestre', 'bosses'],
+  'Mus_Boss_DraculaBeast_Edit': ['Dracula (Beast, edit)', "Court of the Night, Master's Quarters", 'Corte da Noite, Aposentos do Mestre', 'bosses'],
+};
+const ORDER = Object.keys(NAMES);
+let lang = 'en'; try { lang = localStorage.getItem('lang') || 'en'; } catch (e) {}
+let state = null, tab = 'areas', query = '', picks = {}, busy = false, playing = null;
+
+const $ = s => document.querySelector(s);
+const t = (k, ...a) => (k.split('.').reduce((o, p) => o && o[p], T[lang]) || k).replace(/\{(\d)\}/g, (_, i) => a[i]);
+const fmt = s => { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const info = n => {
+  const x = NAMES[n]; if (!x) return {label: n, where: '', group: 'all'};
+  const pt = lang === 'pt';
+  return {label: x[0] + (pt && x[2] && !x[1] ? ' (' + x[2] + ')' : ''), where: pt ? (x[1] ? x[2] : '') : x[1], group: x[3]};
+};
+const errText = j => { const k = 'err.' + j.error, s = t(k, j.file || ''); return s === k ? j.error : s; };
+
+function texts() {
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+  document.title = t('title');
+  document.querySelectorAll('[data-t]').forEach(el => el.textContent = t(el.dataset.t));
+  document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l === lang));
+  if (state) render();
+}
+
+function status() {
+  $('#st-game').textContent = state.game_open ? t('gameOpen') : t('gameClosed');
+  $('#st-game').className = 'pill ' + (state.game_open ? 'err' : 'ok');
+  $('#st-bank').textContent = t('bank', state.bank_mb);
+  $('#b-undo').disabled = !state.has_undo;
+}
+
+async function load() {
+  const r = await fetch('/api/state'); state = await r.json();
+  if (state.error) { log(t('error'), state.error, false); return; }
+  render();
+}
+
+function render() {
+  const ok = state.setup.game && state.setup.ffmpeg;
+  $('#bar').style.display = ok ? '' : 'none';
+  $('#tabs').style.display = $('#list').style.display = ok ? '' : 'none';
+  $('#setup').innerHTML = ok ? '' : `<div class="setup"><h2>${t('setupTitle')}</h2>
+    ${state.setup.game ? '' : `<p>${t('gameMissing')}</p><div class="row"><input type="text" id="cfg-game" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\Castlevania Belmont's Curse" style="flex:1"></div>`}
+    ${state.setup.ffmpeg ? '' : `<p>${t('ffmpegMissing')} <a href="https://www.gyan.dev/ffmpeg/builds/" target="_blank" rel="noopener">gyan.dev/ffmpeg</a></p><div class="row"><input type="text" id="cfg-ffmpeg" placeholder="C:\\ffmpeg\\bin\\ffmpeg.exe" style="flex:1"></div>`}
+    <div><button class="main" id="cfg-save">${t('save')}</button></div></div>`;
+  if (!ok) {
+    $('#cfg-save').onclick = async () => {
+      const body = {game_dir: ($('#cfg-game') || {}).value, ffmpeg: ($('#cfg-ffmpeg') || {}).value};
+      await fetch('/api/config', {method: 'POST', body: JSON.stringify(body)}); load();
+    };
+    return;
+  }
+  status();
+  $('#tabs').innerHTML = ['areas', 'bosses', 'other', 'all'].map(k => `<button class="tab ${k === tab ? 'on' : ''}" data-a="${k}">${t('tabs.' + k)}</button>`).join('')
+    + '<span class="sp"></span><input type="search" id="search" placeholder="' + t('search') + '" value="' + esc(query) + '">';
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab = b.dataset.a; render(); });
+  $('#search').oninput = e => { query = e.target.value; renderList(); $('#search').focus(); };
+  renderList();
+}
+
+function renderList() {
+  const q = query.toLowerCase();
+  let fx = state.tracks.map(f => ({...f, ...info(f.track)}));
+  if (tab !== 'all') fx = fx.filter(f => f.group === tab).sort((a, b) => ORDER.indexOf(a.track) - ORDER.indexOf(b.track));
+  else fx.sort((a, b) => a.track.localeCompare(b.track));
+  if (q) fx = fx.filter(f => (f.label + ' ' + f.where + ' ' + f.track).toLowerCase().includes(q));
+  $('#list').innerHTML = fx.map(f => {
+    const p = picks[f.track] || {}, h = state.history[f.track];
+    const tag = f.any_length ? `<span class="tag free">${t('anyLen')}</span>` : `<span class="tag limit">${t('upTo', fmt(f.seconds))}</span>`;
+    let warn = '';
+    if (p.dur && !f.any_length && p.dur > f.seconds + 0.5) warn = `<div class="warn">${t('tooLong', fmt(p.dur), fmt(f.seconds))}</div>`;
+    else if (p.dur && !f.any_length && p.dur < f.seconds - 2) warn = `<div class="warn">${t('shorter')}</div>`;
+    return `<div class="item ${p.music ? 'sel' : ''}" data-f="${esc(f.track)}">
+      <div><div class="name">${esc(f.label)}${tag}</div>
+        ${f.where ? `<div class="where">${esc(f.where)}</div>` : ''}
+        <div class="track">${esc(f.track)} · ${fmt(f.seconds)}</div>
+        ${h ? `<div class="now">${esc(t('swappedFor', h.music, h.when))}</div>` : ''}
+        <div class="row cur">${playing === f.track ? `<audio controls autoplay src="/api/current?t=${encodeURIComponent(f.track)}&v=${state.ver}"></audio>` : `<button class="play small">▶ ${t('current')}</button>`}
+          ${h ? `<button class="restore small" ${busy ? 'disabled' : ''}>↺ ${t('restore')}</button>` : ''}</div></div>
+      <div class="pickcol">
+        <div class="row"><button class="pick">${p.music ? t('repick') : t('pick')}</button>
+          ${p.music ? `<span class="file" title="${esc(p.music)}">${esc(p.music)}${p.dur ? ' · ' + fmt(p.dur) : ''}</span>` : `<span class="file track">${t('formats')}</span>`}</div>
+        ${p.music ? `<div class="row"><audio controls preload="none" src="/api/listen?m=${encodeURIComponent(p.music)}"></audio>
+          ${f.any_length ? `<label class="lp">${t('loopAt')} <input class="loop" type="number" min="0" step="0.1" placeholder="0" value="${p.loop || ''}"> s</label>` : ''}</div>` : ''}
+        ${warn}
+      </div>
+      <div><button class="main go" ${p.music && !busy ? '' : 'disabled'}>${t('swap')}</button></div>
+    </div>`;
+  }).join('') || `<div class="track">${t('nothing')}</div>`;
+  document.querySelectorAll('.item').forEach(el => {
+    const track = el.dataset.f;
+    el.querySelector('.pick').onclick = () => choose(track);
+    const pl = el.querySelector('.play'); if (pl) pl.onclick = () => { playing = track; renderList(); };
+    const au = el.querySelector('.cur audio');
+    if (au) { const lb = document.createElement('span'); lb.className = 'track'; lb.textContent = t('loading'); au.after(lb); au.oncanplay = () => lb.remove(); }
+    const rs = el.querySelector('.restore'); if (rs) rs.onclick = () => restoreTrack(track);
+    const lp = el.querySelector('.loop'); if (lp) lp.oninput = () => { picks[track].loop = lp.value; };
+    el.querySelector('.go').onclick = () => swap(track);
+  });
+}
+
+function choose(track) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    log(t('uploading', f.name), '', null);
+    const r = await fetch('/api/upload?name=' + encodeURIComponent(f.name), {method: 'POST', body: f});
+    const j = await r.json(); $('#log').style.display = 'none';
+    const a = new Audio(URL.createObjectURL(f));
+    a.onloadedmetadata = () => { picks[track].dur = a.duration; renderList(); };
+    picks[track] = {music: j.music}; renderList();
+  };
+  inp.click();
+}
+
+async function act(url, body, title) {
+  busy = true; renderList();
+  log('<span class="spin"></span> ' + esc(title), '', null, true);
+  try {
+    const r = await fetch(url, {method: 'POST', body: JSON.stringify(body)}); const j = await r.json();
+    if (j.error) log(t('failed'), errText(j), false);
+    else log(j.ok ? t('done') : t('notDone'), j.log, j.ok);
+    busy = false; playing = null; await load(); return j.ok;
+  } catch (err) { log(t('error'), String(err), false); busy = false; renderList(); }
+}
+
+async function swap(track) {
+  const p = picks[track];
+  if (await act('/api/swap', {track, music: p.music, loop: p.loop || 0}, t('swapping', info(track).label))) { delete picks[track]; renderList(); }
+}
+
+function restoreTrack(track) {
+  if (confirm(t('cTrack', info(track).label))) act('/api/restore_track', {track}, t('restoring', info(track).label));
+}
+
+function restoreBank(what, text) {
+  if (confirm(text)) act('/api/restore', {what}, t('copying'));
+}
+
+function log(title, body, ok, html) {
+  $('#log').style.display = 'block';
+  $('#log-t')[html ? 'innerHTML' : 'textContent'] = title;
+  $('#log-t').className = 't ' + (ok === true ? 'ok' : ok === false ? 'err' : '');
+  $('#log-p').textContent = body || '';
+}
+
+document.querySelectorAll('.lang button').forEach(b => b.onclick = () => {
+  lang = b.dataset.l; try { localStorage.setItem('lang', lang); } catch (e) {}
+  texts();
+});
+$('#b-undo').onclick = () => restoreBank('undo', t('cUndo'));
+$('#b-all').onclick = () => restoreBank('all', t('cAll'));
+texts(); load();
+setInterval(async () => {
+  if (busy || !state || !state.tracks) return;
+  const r = await fetch('/api/state'); const j = await r.json(); if (j.error || !j.tracks) return;
+  state.game_open = j.game_open; state.has_undo = j.has_undo; status();
+}, 5000);
+</script>
+</body>
+</html>
