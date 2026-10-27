@@ -1,4 +1,4 @@
-# Music Swap for Castlevania: Belmont's Curse
+# Music Swapper for Castlevania: Belmont's Curse
 
 Replace any music in the game with your own files, from a simple page in your browser.
 
@@ -20,12 +20,12 @@ ffmpeg is licensed under the GPL v3; see `ffmpeg/LICENSE` and `ffmpeg/README.txt
 ## Use
 
 1. Close the game.
-2. Double-click `Music Swap.bat`. The page opens in your browser.
+2. Double-click `Music Swapper.bat`. The page opens in your browser.
 3. Pick an area or boss, click **Choose music…**, then **Swap**.
 
 The game folder is found automatically (Steam libraries and common folders). If it is not found, the page asks for it.
 
-The first time it runs, Music Swap keeps a copy of your current `Master.bank` in `backup/`. **Restore original** and **Restore all music** go back to that copy. If you already had another music mod installed, that mod's music is what comes back.
+The first time it runs, Music Swapper keeps a copy of your current `Master.bank` in `backup/`. **Restore original** and **Restore all music** go back to that copy. If you already had another music mod installed, that mod's music is what comes back.
 
 ## Command line
 

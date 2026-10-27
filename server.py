@@ -175,6 +175,6 @@ def open_browser(url):
 
 if __name__ == '__main__':
     srv = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
-    print('Music Swap running at http://127.0.0.1:%d  (close this window to stop it)' % PORT)
+    print('Music Swapper running at http://127.0.0.1:%d  (close this window to stop it)' % PORT)
     if '--no-browser' not in sys.argv: threading.Timer(0.8, open_browser, ['http://127.0.0.1:%d' % PORT]).start()
     srv.serve_forever()
