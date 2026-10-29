@@ -268,9 +268,10 @@ function renderList() {
   if (q) fx = fx.filter(f => (f.label + ' ' + f.where + ' ' + f.track).toLowerCase().includes(q));
   $('#list').innerHTML = fx.map(f => {
     const p = picks[f.track] || {}, h = state.history[f.track];
-    const tag = f.any_length ? `<span class="tag free">${t('anyLen')}</span>` : `<span class="tag limit">${t('upTo', fmt(f.seconds))}</span>`;
+    const max = f.any_length ? f.max_seconds : f.seconds;
+    const tag = f.any_length && !max ? `<span class="tag free">${t('anyLen')}</span>` : `<span class="tag limit">${t('upTo', fmt(max))}</span>`;
     let warn = '';
-    if (p.dur && !f.any_length && p.dur > f.seconds + 0.5) warn = `<div class="warn">${t('tooLong', fmt(p.dur), fmt(f.seconds))}</div>`;
+    if (p.dur && max && p.dur > max + 0.5) warn = `<div class="warn">${t('tooLong', fmt(p.dur), fmt(max))}</div>`;
     else if (p.dur && !f.any_length && p.dur < f.seconds - 2) warn = `<div class="warn">${t('shorter')}</div>`;
     return `<div class="item ${p.music ? 'sel' : ''}" data-f="${esc(f.track)}">
       <div><div class="name">${esc(f.label)}${tag}</div>

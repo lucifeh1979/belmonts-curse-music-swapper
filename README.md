@@ -6,8 +6,8 @@ Download: https://www.nexusmods.com/castlevaniabelmontscurse/mods/140
 
 Demonstration video: https://youtu.be/L-p6SFayYP4
 
-- Area music can be **any length**, longer or shorter than the original. The tool rebuilds the audio bank and stretches the event timeline so the game plays the whole song and loops back at the end.
-- Boss tracks and other tracks that the game plays in pieces (intro, loop, outro) accept music **up to the original length**.
+- Area music can be **any length**, longer or shorter than the original. The tool rebuilds the audio bank and stretches the event timeline so the game plays the whole song and loops back at the end. This includes Main Hall, Notre Dame and Clock Tower: when other music follows on the same timeline (the Main Hall bridge, the Notre Dame post-fight music), it moves along with the end of your song.
+- Boss tracks and other tracks that the game plays in pieces (intro, loop, outro) accept music **up to the original length**; boss intros show their own limit.
 - Every change is tested with the game's own FMOD library before it is written. If the test fails, nothing is touched.
 - Listen to the music that is in the game right now, undo the last change, put one track back to the original, or restore everything.
 

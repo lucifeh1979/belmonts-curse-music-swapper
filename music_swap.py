@@ -242,7 +242,40 @@ def find_all(b, pat, lo=0, hi=None):
     return r
 
 
-def timeline_patches(meta, proj, idx, old_end_hint, new_end, loop_start):
+class TooLong(SystemExit):
+    pass
+
+
+class Patches(list):
+    section = None
+    max = None
+    later = ()
+    shifted = False
+
+
+def is_area(track):
+    return track.startswith(('Mus_Biome_', 'Mus_Room_'))
+
+
+def regions(meta, lo, hi):
+    return [q for q in find_all(meta, b'\x1a\x00', lo, hi) if meta[q + 22:q + 24] == b'\0\0']
+
+
+def later_fields(meta, lo, hi, wais, old_end):
+    after = lambda o: old_end + TL // 2 < struct.unpack_from('<I', meta, o)[0] < 4 * 3600 * TL
+    offs = {q + 18 for q in regions(meta, lo, hi) if after(q + 18)}
+    offs |= {t + 8 + k for t in find_all(meta, b'TRNB', lo, hi) for k in (32, 36) if after(t + 8 + k)}
+    for o in range(lo + 16, hi - 4):
+        n = struct.unpack_from('<H', meta, o + 4)[0]
+        if after(o) and o not in offs and 0 < n < 64 and all(32 < c < 127 for c in meta[o + 6:o + 6 + n]): offs.add(o)
+    if not offs: return []
+    top = max(struct.unpack_from('<I', meta, o)[0] for o in offs)
+    for o in range(lo + 16, hi - 4):
+        if after(o) and o not in offs and struct.unpack_from('<I', meta, o)[0] <= top and meta.find(bytes(meta[o - 16:o]), wais[0], wais[1]) != -1: offs.add(o)
+    return sorted(offs)
+
+
+def timeline_patches(meta, proj, idx, old_end_hint, new_end, loop_start, area=False):
     lists = {}
     for cid, p, sz in riff_children(meta, proj + 12, proj + 8 + struct.unpack_from('<I', meta, proj + 4)[0]):
         if cid == b'LIST': lists[bytes(meta[p + 8:p + 12])] = (p, sz)
@@ -256,23 +289,39 @@ def timeline_patches(meta, proj, idx, old_end_hint, new_end, loop_start):
     insts = [bytes(meta[j - 16:j]) for j in find_all(meta, wave, ip, ip + 8 + isz)]
     if not insts: raise SystemExit('instrument for the waveform not found in WAIS')
     tp, tsz = lists[b'TLNS']
-    out = []; found = 0
+    out = Patches(); found = 0
     for cid, p, sz in riff_children(meta, tp + 12, tp + 8 + tsz):
         lo, hi = p, p + 8 + sz
         for inst in insts:
             for j in find_all(meta, inst, lo, hi):
                 st, ln = struct.unpack_from('<II', meta, j + 16)
                 old_end = st + ln
-                if abs(old_end - old_end_hint) > TL // 2:
-                    continue
-                found += 1
                 d = new_end - old_end_hint
                 ne = old_end + d
+                loops = [q for q in regions(meta, lo, hi) if sum(struct.unpack_from('<I', meta, q + k)[0] for k in (18, 24)) == old_end]
+                plain = abs(old_end - old_end_hint) <= TL // 2
+                if not plain and (st > TL or abs(ln - old_end_hint) > TL or len(loops) != 1): continue
+                later = later_fields(meta, lo, hi, (ip, ip + 8 + isz), old_end)
+                if later and (not area or st > TL or len(loops) != 1):
+                    limit = min(struct.unpack_from('<I', meta, o)[0] for o in later)
+                    out.max = round((limit - old_end + old_end_hint) / TL, 1)
+                    if ne > limit: raise TooLong('this track accepts music up to %.1f s' % out.max)
+                    later = []
+                found += 1
                 out.append((j + 20, ln + d))
-                for r in find_all(meta, b'\x02\x00\x1a\x00', lo, hi):
-                    rs = struct.unpack_from('<I', meta, r + 20)[0]; rl = struct.unpack_from('<I', meta, r + 26)[0]
-                    if rs + rl == old_end:
-                        out += [(r + 20, loop_start), (r + 26, ne - loop_start)]
+                if plain and not later:
+                    for r in find_all(meta, b'\x02\x00\x1a\x00', lo, hi):
+                        rs = struct.unpack_from('<I', meta, r + 20)[0]; rl = struct.unpack_from('<I', meta, r + 26)[0]
+                        if rs + rl == old_end:
+                            out += [(r + 20, loop_start), (r + 26, ne - loop_start)]
+                else:
+                    out += [(loops[0] + 18, st + loop_start), (loops[0] + 24, ne - st - loop_start)]
+                out += [(o, struct.unpack_from('<I', meta, o)[0] + d) for o in later]
+                out.shifted = bool(later)
+                if later or not plain:
+                    out.section = (old_end, ne, st + loop_start, struct.unpack_from('<I', meta, loops[0] + 18)[0])
+                    out.later = [(struct.unpack_from('<I', meta, q + 18)[0], sum(struct.unpack_from('<I', meta, q + k)[0] for k in (18, 24)))
+                                 for q in regions(meta, lo, hi) if q + 18 in later]
                 for t in find_all(meta, b'TRNB', lo, hi):
                     for k in (32, 36):
                         v = struct.unpack_from('<I', meta, t + 8 + k)[0]
@@ -350,6 +399,36 @@ def check_events(game, test, before, n, old_n, rate):
     else: print('  warning: did not see the loop come back at the end')
 
 
+def check_section(game, bank, test, before, p, n, old_n, rate):
+    after = isolated(game, ['len', test])
+    if not p.shifted and after != before: return check_events(game, test, before, n, old_n, rate)
+    old_end, ne, ls, old_ls = (round(x * 1000 / TL) for x in p.section)
+    changed = [e for e in before if before[e] != after.get(e)]
+    if p.shifted and (len(changed) != 1 or abs(after[changed[0]] - before[changed[0]] - (ne - old_end)) > 2):
+        raise SystemExit('the rest of the event did not move with the music; nothing written')
+    if not p.shifted and changed: raise SystemExit('an event changed length; nothing written')
+    evs = [e for e, lo in isolated(game, ['loopers', bank, '', str(old_end - 4000), '6000']).items() if abs(lo - old_ls) < 1000]
+    if len(evs) != 1 or p.shifted and evs != changed: raise SystemExit('could not tell which event plays this track')
+    ev = evs[0]
+    d = ne - old_end
+    for s, e in p.later:
+        s, e = round(s * 1000 / TL), round(e * 1000 / TL)
+        a = isolated(game, ['trace', bank, ev, str(e - 4000), '6000'])
+        if a[5] < e - 4500:
+            print('  ok: the later part at %.1f s moved to %.1f s' % (s / 1000, (s + d) / 1000)); continue
+        b = isolated(game, ['trace', test, ev, str(e + d - 4000), '6000'])
+        if abs(min(b[25:]) - min(a[25:]) - d) > 500: raise SystemExit('a later part of the event plays or loops in the wrong place')
+        print('  ok: the later part at %.1f s moved to %.1f s and loops back to %.1f s' % (s / 1000, (s + d) / 1000, min(b[25:]) / 1000))
+    if ne > old_end + 3000:
+        pts = isolated(game, ['trace', test, ev, str(old_end - 3000), '6000'])
+        if min(pts[25:]) < old_end - 3500: raise SystemExit('the music still loops at the old end')
+        print('  ok: plays past the old end (%.1f s) without looping' % (old_end / 1000))
+    pts = isolated(game, ['trace', test, ev, str(max(0, ne - 4000)), '6000'])
+    back = min(pts[25:])
+    if not ls - 500 <= back < ls + 3000: raise SystemExit('at the end it does not loop back to %.1f s' % (ls / 1000))
+    print('  ok: %s loops at %.1f s back to %.1f s' % (ev, ne / 1000, back / 1000))
+
+
 def cmd_list(a):
     b = Bank(a.bank); fsb = b.fsb; out = []
     for i, n in enumerate(fsb.names):
@@ -357,14 +436,14 @@ def cmd_list(a):
             r, c, s = fsb.info(i)
             old = round(s * TL / r)
             try:
-                timeline_patches(b.meta, b.proj, i, old, old, 0); free = True
+                pt = timeline_patches(b.meta, b.proj, i, old, old, 0, is_area(n)); free = True
             except SystemExit:
-                free = False
-            out.append({'track': n, 'seconds': round(s / r, 1), 'any_length': free})
+                pt = Patches(); free = False
+            out.append({'track': n, 'seconds': round(s / r, 1), 'any_length': free, 'max_seconds': pt.max})
     b.close()
     if a.json: print(json.dumps(out))
     else:
-        for x in out: print('%-55s %5.0f s %s' % (x['track'], x['seconds'], '' if x['any_length'] else '(same length or shorter only)'))
+        for x in out: print('%-55s %5.0f s %s' % (x['track'], x['seconds'], ('(up to %.0f s)' % x['max_seconds'] if x['max_seconds'] else '') if x['any_length'] else '(same length or shorter only)'))
 
 
 def cmd_swap(a):
@@ -387,7 +466,9 @@ def cmd_swap(a):
     loop_start = round(a.loop_start * TL)
     if loop_start >= new_end: raise SystemExit('--loop-start is past the end of the music')
     try:
-        patches = timeline_patches(b.meta, b.proj, idx, old_end, new_end, loop_start)
+        patches = timeline_patches(b.meta, b.proj, idx, old_end, new_end, loop_start, is_area(a.track))
+    except TooLong:
+        raise
     except SystemExit as e:
         if n > old_n: raise SystemExit('%s\nthis track only accepts music up to %.1f s' % (e, old_n / rate))
         patches = None
@@ -397,7 +478,8 @@ def cmd_swap(a):
         b.write(test, idx, header, blob, patches)
         print('%d timeline fields adjusted' % len(patches))
         try:
-            check_events(a.game, test, before, n, old_n, rate)
+            if patches.section: check_section(a.game, a.bank, test, before, patches, n, old_n, rate)
+            else: check_events(a.game, test, before, n, old_n, rate)
         except SystemExit as e:
             if n > old_n: raise
             print('  %s; replacing the audio only (music is shorter than the original)' % e)
@@ -420,7 +502,7 @@ def cmd_restore(a):
     r, c, n = b.fsb.info(idx); ro, co, no = o.fsb.info(io)
 
     def fields(bank, i, end):
-        try: return sorted(off for off, _ in timeline_patches(bank.meta, bank.proj, i, end, end, 0))
+        try: return sorted(off for off, _ in timeline_patches(bank.meta, bank.proj, i, end, end, 0, is_area(a.track)))
         except SystemExit: return []
     fa = fields(b, idx, round(n * TL / r))
     if fa != fields(o, io, round(no * TL / ro)): raise SystemExit('timeline fields differ between the banks; cannot restore')
@@ -483,6 +565,8 @@ def cmd_extract(a):
 def cmd_fmod(a):
     st = Studio(a.game, a.bank)
     if a.kind == 'len': print(json.dumps(st.lengths()))
+    elif a.kind == 'loopers':
+        print(json.dumps({e: min(st.trace(e, a.start_ms, a.ms)[25:]) for e, L in st.lengths().items() if L > a.start_ms + 1000}))
     else: print(json.dumps(st.trace(a.event, a.start_ms, a.ms)))
 
 
