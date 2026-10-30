@@ -206,11 +206,11 @@ def ogg_packets(path):
 def encode(ffmpeg, audio, rate, chans, crc, tmp):
     for q in (9, 10, 8, 7, 6, 5, 4, 3, 2, 1, 0):
         t = os.path.join(tmp, 'q.ogg')
-        subprocess.run([ffmpeg, '-v', 'error', '-y', '-t', '2', '-i', audio, '-ar', str(rate), '-ac', str(chans),
+        subprocess.run([ffmpeg, '-v', 'error', '-y', '-t', '2', '-i', audio, '-vn', '-ar', str(rate), '-ac', str(chans),
                         '-c:a', 'libvorbis', '-q:a', str(q), t], check=True, creationflags=NO_WINDOW)
         if zlib.crc32(ogg_packets(t)[2][0]) == crc:
             out = os.path.join(tmp, 'new.ogg')
-            subprocess.run([ffmpeg, '-v', 'error', '-y', '-i', audio, '-ar', str(rate), '-ac', str(chans),
+            subprocess.run([ffmpeg, '-v', 'error', '-y', '-i', audio, '-vn', '-ar', str(rate), '-ac', str(chans),
                             '-c:a', 'libvorbis', '-q:a', str(q), out], check=True, creationflags=NO_WINDOW)
             return out, q
     raise SystemExit('no libvorbis quality produces the setup header FMOD expects (CRC %08x)' % crc)
